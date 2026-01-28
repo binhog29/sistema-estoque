@@ -1,0 +1,67 @@
+​📘 MANUAL DO SISTEMA - FUTURANET ESTOQUE
+​Versão: 1.0 (Mobile/PWA)
+Responsável Técnico: Fábio / DualCoreSolutions
+​1. Visão Geral
+​O sistema tem como objetivo controlar o fluxo de equipamentos entre a Filial, os Técnicos e os Clientes. Diferente de um estoque comum, este sistema rastreia a responsabilidade: sabemos exatamente o que está na prateleira e o que está na mochila de cada técnico.
+​Acesso ao Sistema
+​Painel Administrativo (Gestão): http://[IP-DO-CELULAR]:8000/admin
+​Painel Visual (Consulta/PDF): http://[IP-DO-CELULAR]:8000
+​2. Conceitos Importantes
+​Antes de operar, entenda os três pilares do sistema:
+​📦 Equipamentos: É o cadastro do produto e o saldo físico que existe na LOJA.
+​🛠 Carteiras dos Técnicos: É o "inventário individual" de cada funcionário. Se o Natan pegou uma ONU, ela sai do Estoque da Loja e entra na Carteira do Natan.
+​🔄 Movimentações: É onde tudo acontece. Nunca alteramos o saldo manualmente; criamos uma movimentação para registrar o histórico (quem pegou, quando e por quê).
+​3. Fluxo de Trabalho (Dia a Dia)
+​SITUAÇÃO A: O Técnico vai sair para a rua
+​Quando o técnico precisa retirar material para trabalhar.
+​Acesse o Admin > Estoque > Histórico de Movimentações.
+​Clique em + Adicionar.
+​Preencha:
+​Técnico: (Selecione o nome, ex: Natan).
+​Equipamento: (Ex: ONU Huawei).
+​Tipo: Selecione 🔴 Retirada (Vai para o Técnico).
+​Quantidade: (Ex: 2).
+​Clique em Salvar.
+​Resultado: O estoque da loja diminui e o sistema registra que o técnico deve 2 ONUs.
+​SITUAÇÃO B: O Técnico usou o material (Instalação Feita)
+​Quando o técnico confirma que o equipamento foi instalado no cliente.
+​Vá em Histórico de Movimentações > + Adicionar.
+​Preencha:
+​Técnico: (Quem instalou).
+​Tipo: Selecione ✅ Baixa em OS (Usado no Cliente).
+​Quantidade: (O que foi gasto).
+​OBS: Coloque o número da OS ou nome do cliente (Ex: "OS 1040 - Dona Maria").
+​Clique em Salvar.
+​Resultado: O item sai da responsabilidade do técnico e é baixado definitivamente.
+​SITUAÇÃO C: O Técnico devolveu o material (Sobrou)
+​Quando o técnico pegou material a mais e trouxe de volta para a loja.
+​Vá em Histórico de Movimentações > + Adicionar.
+​Preencha:
+​Técnico: (Quem está devolvendo).
+​Tipo: Selecione 🟢 Devolução (Volta para Empresa).
+​Clique em Salvar.
+​Resultado: O item sai da responsabilidade do técnico e volta para a prateleira da loja.
+​4. Relatórios e Monitoramento
+​Como saber o que está com cada técnico? (O "Dedo-Duro")
+​No Admin, clique em Carteiras dos Técnicos.
+​Use o filtro lateral para selecionar o nome do funcionário.
+​A lista mostrará apenas os itens que estão pendentes com ele (Quantidade > 0).
+​Como enviar o fechamento para a Sede?
+​Acesse a tela inicial do sistema (o Dashboard Azul).
+​Clique no botão "📄 Gerar PDF Sede".
+​O arquivo será baixado automaticamente contendo:
+​Saldo atual de cada item na loja.
+​Lista das últimas movimentações (quem pegou/devolveu).
+​Envie esse arquivo via WhatsApp para a gerência.
+​5. Cadastro (Manutenção)
+​Cadastrando Novos Funcionários
+​Para que o nome do técnico apareça na lista:
+​Vá em Usuários > + Adicionar.
+​Crie um usuário com o nome dele (Ex: carlos).
+​Defina uma senha simples (eles não precisam acessar o sistema, é só para registro).
+​Salve.
+​Cadastrando Novos Produtos
+​Quando chegar um modelo novo de equipamento:
+​Vá em Equipamentos > + Adicionar.
+​Preencha Nome, Tipo, Quantidade Inicial (da Nota Fiscal), Estoque Mínimo e insira a Foto.
+​Salve.

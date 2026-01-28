@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Helvetica, sans-serif; color: #333; }
+        h1 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px; }
+        h2 { margin-top: 30px; font-size: 18px; background-color: #eee; padding: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #f2f2f2; text-align: left; padding: 8px; font-size: 12px; border: 1px solid #ddd; }
+        td { padding: 8px; font-size: 11px; border: 1px solid #ddd; }
+        .baixo { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Futuranet - Relatório de Controle</h1>
+    <p>Relatório gerado para conferência da Sede.</p>
+
+    <h2>1. Posição de Estoque (Físico na Loja)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Produto</th>
+                <th>Tipo</th>
+                <th>Qtd. Loja</th>
+                <th>Situação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in equipamentos %}
+            <tr>
+                <td>{{ item.nome }}</td>
+                <td>{{ item.get_tipo_display }}</td>
+                <td>{{ item.quantidade }}</td>
+                <td>
+                    {% if item.quantidade <= item.minimo %}
+                        <span class="baixo">BAIXO ESTOQUE</span>
+                    {% else %}
+                        Normal
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>2. Últimas Movimentações</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Ação</th>
+                <th>Técnico</th>
+                <th>Item</th>
+                <th>Qtd</th>
+                <th>OS/Obs</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mov in movimentacoes %}
+            <tr>
+                <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+                <td>{{ mov.get_tipo_display }}</td>
+                <td>{{ mov.tecnico.username }}</td>
+                <td>{{ mov.equipamento.nome }}</td>
+                <td>{{ mov.quantidade }}</td>
+                <td>{{ mov.obs }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
