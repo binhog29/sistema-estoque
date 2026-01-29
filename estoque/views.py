@@ -1,10 +1,13 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required # <--- IMPORTANTE: O Cadeado
 from .models import Equipamento, Movimentacao
 from fpdf import FPDF
 from datetime import datetime
 
-# Tela Inicial
+# Tela Inicial (Agora Protegida)
+# Se não estiver logado, manda para o login do Admin
+@login_required(login_url='/admin/login/') 
 def index(request):
     equipamentos = Equipamento.objects.all().order_by('nome')
     return render(request, 'estoque/index.html', {'equipamentos': equipamentos})
@@ -23,6 +26,8 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
 
+# Relatório PDF (Também Protegido)
+@login_required(login_url='/admin/login/')
 def gerar_relatorio_pdf(request):
     # Cria o objeto PDF
     pdf = PDF()
@@ -46,7 +51,13 @@ def gerar_relatorio_pdf(request):
     equipamentos = Equipamento.objects.all().order_by('nome')
     
     for item in equipamentos:
-        pdf.cell(80, 8, f"{item.nome[:35]}", 1) # Corta nome longo
+        # Tenta pegar nome seguro, caso tenha erro de caractere
+        try:
+            nome_prod = item.nome[:35].encode('latin-1', 'ignore').decode('latin-1')
+        except:
+            nome_prod = item.nome[:35]
+
+        pdf.cell(80, 8, nome_prod, 1) 
         pdf.cell(40, 8, item.get_tipo_display(), 1, 0, 'C')
         pdf.cell(30, 8, str(item.quantidade), 1, 0, 'C')
         
@@ -75,19 +86,28 @@ def gerar_relatorio_pdf(request):
     
     for mov in movimentacoes:
         data_fmt = mov.data.strftime("%d/%m %H:%M")
-        pdf.cell(35, 8, data_fmt, 1)
-        pdf.cell(40, 8, mov.tecnico.username, 1)
-        pdf.cell(20, 8, mov.tipo, 1, 0, 'C')
-        pdf.cell(60, 8, mov.equipamento.nome[:30], 1)
+        
+        # Tratamento de caracteres para evitar erro no PDF
+        nome_tec = mov.tecnico.username
+        nome_eqp = mov.equipamento.nome[:30]
         obs_texto = mov.obs if mov.obs else "-"
+        
+        try:
+            nome_eqp = nome_eqp.encode('latin-1', 'ignore').decode('latin-1')
+            obs_texto = obs_texto.encode('latin-1', 'ignore').decode('latin-1')
+        except:
+            pass
+
+        pdf.cell(35, 8, data_fmt, 1)
+        pdf.cell(40, 8, nome_tec, 1)
+        pdf.cell(20, 8, mov.tipo, 1, 0, 'C')
+        pdf.cell(60, 8, nome_eqp, 1)
         pdf.cell(35, 8, obs_texto[:20], 1, 1)
 
     # Gerar e Retornar o PDF
     response = HttpResponse(content_type='application/pdf')
-    # O comando 'attachment' força o download.
     response['Content-Disposition'] = 'attachment; filename="relatorio_estoque.pdf"'
     
-    # Gera o binário do PDF
     pdf_output = pdf.output(dest='S').encode('latin-1', 'ignore')
     response.write(pdf_output)
     
