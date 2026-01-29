@@ -142,7 +142,7 @@ JAZZMIN_SETTINGS = {
             "name": "Voltar ao Painel Visual", 
             "url": "/", 
             "icon": "fas fa-chart-pie", # Ícone de gráfico
-            "permissions": ["auth.view_user"]
+            # REMOVI A LINHA DE PERMISSÃO AQUI. AGORA É PÚBLICO.
         }]
     },
 
