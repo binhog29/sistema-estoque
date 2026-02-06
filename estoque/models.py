@@ -2,13 +2,15 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
-# 1. O Equipamento (O que existe na empresa)
+# ==============================================================================
+# 1. O Equipamento (O que existe na empresa) - MANTIDO ORIGINAL
+# ==============================================================================
 class Equipamento(models.Model):
     TIPO_CHOICES = [
         ('FIBRA', 'Fibra Óptica'),
         ('RADIO', 'Via Rádio'),
         ('FERRAMENTA', 'Ferramentas'),
-        ('TORRES', 'Equipamento para Torres'), # <--- NOVA CATEGORIA AQUI
+        ('TORRES', 'Equipamento para Torres'),
     ]
     
     # Informações Básicas
@@ -27,7 +29,9 @@ class Equipamento(models.Model):
     def __str__(self):
         return f"{self.nome} (Qtd: {self.quantidade})"
 
-# 2. O Estoque do Técnico (O que está com ele/Dívida)
+# ==============================================================================
+# 2. O Estoque do Técnico (O que está com ele/Dívida) - MANTIDO ORIGINAL
+# ==============================================================================
 class EstoqueTecnico(models.Model):
     tecnico = models.ForeignKey(User, on_delete=models.CASCADE, related_name='meu_estoque')
     equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE)
@@ -41,7 +45,9 @@ class EstoqueTecnico(models.Model):
     def __str__(self):
         return f"{self.tecnico.username} tem {self.quantidade}x {self.equipamento.nome}"
 
-# 3. A Movimentação (O motor da automação)
+# ==============================================================================
+# 3. A Movimentação (O motor da automação) - MANTIDO ORIGINAL
+# ==============================================================================
 class Movimentacao(models.Model):
     TIPO_MOVIMENTO = [
         ('SAIDA', '🔴 Retirada (Sai do Estoque -> Vai pro Técnico)'),
@@ -57,38 +63,46 @@ class Movimentacao(models.Model):
     data = models.DateTimeField(auto_now_add=True)
     autor_movimento = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='autor_log', verbose_name="Quem registrou")
 
+    # --- NOVIDADE: A validação (clean) acontece ANTES de salvar ---
+    def clean(self):
+        # Se for edição (self.pk existe), não validamos saldo para evitar bloqueios antigos
+        if self.pk is None:
+            # Pega ou cria a carteira do técnico para conferir o saldo
+            carteira, created = EstoqueTecnico.objects.get_or_create(tecnico=self.tecnico, equipamento=self.equipamento)
+
+            # Validação 1: Empresa tem saldo para SAIDA?
+            if self.tipo == 'SAIDA':
+                if self.equipamento.quantidade < self.quantidade:
+                    raise ValidationError(f"Estoque Insuficiente! A empresa só tem {self.equipamento.quantidade} unidades.")
+
+            # Validação 2: Técnico tem saldo para DEVOLUCAO?
+            elif self.tipo == 'DEVOLUCAO':
+                if carteira.quantidade < self.quantidade:
+                    raise ValidationError(f"Erro no Saldo! O técnico {self.tecnico.username} só tem {carteira.quantidade} em mãos.")
+
+            # Validação 3: Técnico tem saldo para BAIXA?
+            elif self.tipo == 'BAIXA':
+                if carteira.quantidade < self.quantidade:
+                    raise ValidationError(f"Não pode dar Baixa! O técnico tem apenas {carteira.quantidade} unidades deste item.")
+
+    # --- AÇÃO: O save só executa se o clean passar ---
     def save(self, *args, **kwargs):
-        # Essa lógica só roda quando cria uma NOVA movimentação
         if self.pk is None: 
             carteira, created = EstoqueTecnico.objects.get_or_create(tecnico=self.tecnico, equipamento=self.equipamento)
 
-            # Lógica 1: O Técnico pega material na empresa
+            # Executa a movimentação matemática
             if self.tipo == 'SAIDA':
-                if self.equipamento.quantidade < self.quantidade:
-                    raise ValidationError(f"Erro: Só tem {self.equipamento.quantidade} no estoque da empresa!")
-                
-                # AQUI ESTÁ A MÁGICA: Tira da empresa, põe no técnico
                 self.equipamento.quantidade -= self.quantidade
                 carteira.quantidade += self.quantidade
 
-            # Lógica 2: O Técnico devolve (não usou)
             elif self.tipo == 'DEVOLUCAO':
-                if carteira.quantidade < self.quantidade:
-                    raise ValidationError(f"Erro: O técnico só tem {carteira.quantidade} em mãos!")
-                
-                # Tira do técnico, devolve pra empresa
                 self.equipamento.quantidade += self.quantidade
                 carteira.quantidade -= self.quantidade
 
-            # Lógica 3: O Técnico usou no cliente (BAIXA)
             elif self.tipo == 'BAIXA':
-                if carteira.quantidade < self.quantidade:
-                    raise ValidationError(f"Erro: O técnico tenta baixar mais do que tem!")
-                
-                # SÓ TIRA DO TÉCNICO. Não devolve pra empresa. (Isso já estava certo!)
                 carteira.quantidade -= self.quantidade
             
-            # Salva as alterações nas outras tabelas
+            # Salva os saldos atualizados
             self.equipamento.save()
             carteira.save()
 
@@ -100,3 +114,40 @@ class Movimentacao(models.Model):
     
     def __str__(self):
         return f"{self.tipo} - {self.equipamento.nome} ({self.quantidade})"
+
+# ==============================================================================
+# 4. SISTEMA DE LOTE (CARRINHO) - ATUALIZADO PARA FICAR IGUAL!
+# ==============================================================================
+# Agora as opções aqui são IDÊNTICAS às da Movimentação (Saída, Devolução e Baixa)
+
+class OrdemMovimentacao(models.Model):
+    tecnico = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Técnico Responsável")
+    
+    # ATUALIZAÇÃO AQUI: Adicionei a BAIXA e corrigi os textos para ficarem iguais
+    tipo = models.CharField(max_length=20, choices=[
+        ('SAIDA', '🔴 Retirada (Sai do Estoque -> Vai pro Técnico)'),
+        ('DEVOLUCAO', '🟢 Devolução (Sai do Técnico -> Volta pro Estoque)'),
+        ('BAIXA', '✅ Baixa em OS (Sai do Técnico -> Cliente/Lixo)'),
+    ], default='SAIDA')
+    
+    data = models.DateTimeField(auto_now_add=True)
+    obs = models.TextField(blank=True, null=True, verbose_name="Observação do Lote")
+
+    # Trava de segurança para não lançar 2x se editar o pedido
+    lancado = models.BooleanField(default=False, editable=False)
+
+    def __str__(self):
+        return f"Lote #{self.id} - {self.tecnico.username} ({self.get_tipo_display()})"
+
+    class Meta:
+        verbose_name = "🔴 Lançamento em Lote (Vários Itens)"
+        verbose_name_plural = "🔴 Lançamentos em Lote (Vários Itens)"
+
+
+class ItemOrdem(models.Model):
+    ordem = models.ForeignKey(OrdemMovimentacao, on_delete=models.CASCADE)
+    equipamento = models.ForeignKey(Equipamento, on_delete=models.CASCADE)
+    quantidade = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.quantidade}x {self.equipamento.nome}"
